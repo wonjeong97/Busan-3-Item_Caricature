@@ -9,6 +9,14 @@ public class ItemZoneManager : MonoBehaviour
     
     [SerializeField] 
     private List<Button> tabButtons;
+    
+    private Color enabledTextColor;
+    private Color disabledTextColor = Color.white;
+    
+    private void Awake()
+    {
+        ColorUtility.TryParseHtmlString("#1FB898", out enabledTextColor);
+    }
 
     private void Start()
     {
@@ -47,10 +55,24 @@ public class ItemZoneManager : MonoBehaviour
         {
             Button button = tabButtons[i];
             
-            if (button)
+            if (!button)
             {
-                // 선택된 탭 버튼은 상호작용을 비활성화하여 눌려있는 듯한 시각적 피드백 제공
-                button.interactable = (i != categoryIndex);
+                continue;
+            }
+
+            bool isInteractable = (i != categoryIndex);
+            button.interactable = isInteractable;
+
+            // 버튼 하위의 Text 컴포넌트를 찾아 상태에 맞는 색상 적용
+            Text buttonText = button.GetComponentInChildren<Text>();
+            
+            if (buttonText)
+            {
+                buttonText.color = isInteractable ? enabledTextColor : disabledTextColor;
+            }
+            else
+            {
+                Debug.LogWarning("Text component is missing in tab button index: " + i);
             }
         }
     }
