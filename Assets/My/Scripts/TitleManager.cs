@@ -3,7 +3,9 @@ using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 
 public class TitleManager : MonoBehaviour
-{
+{   
+    public static TitleManager Instance { get; private set; }
+    
     [Header("Page References")]
     [SerializeField] private GameObject page1;
     [SerializeField] private GameObject page2;
@@ -15,6 +17,17 @@ public class TitleManager : MonoBehaviour
 
     [Header("Settings")]
     [SerializeField] private string nextSceneName;
+    
+    private void Awake()
+    {
+        if (Instance)
+        {
+            Destroy(gameObject);
+            return;
+        }
+
+        Instance = this;
+    }
 
     private void Start()
     {

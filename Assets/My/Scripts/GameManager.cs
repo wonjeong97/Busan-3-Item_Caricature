@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using Wonjeong.Reporter;
 using Wonjeong.Utils;
 
@@ -12,6 +13,10 @@ public class GameManager : MonoBehaviour
     [Header("UI Audio")]
     [SerializeField] private AudioSource uiAudioSource;
     [SerializeField] private AudioClip defaultClickSound;
+    
+    [Header("Idle Settings")]
+    [SerializeField] private float idleTimer;
+    private const float IdleTimeoutDuration = 60f;
 
     private void Awake()
     {
@@ -36,6 +41,32 @@ public class GameManager : MonoBehaviour
 
     private void Update()
     {
+        if (Input.anyKey || Input.GetAxis("Mouse X") != 0f || Input.GetAxis("Mouse Y") != 0f)
+        {
+            idleTimer = 0f;
+        }
+        else
+        {
+            idleTimer += Time.deltaTime;
+        }
+
+        if (idleTimer >= IdleTimeoutDuration)
+        {
+            idleTimer = 0f;
+            
+            if (SceneManager.GetActiveScene().name == GameConstants.TitleScene)
+            {
+                if (TitleManager.Instance)
+                {
+                    TitleManager.Instance.OnBackButtonClicked();
+                }
+            }
+            else
+            {
+                SceneManager.LoadScene(GameConstants.TitleScene);
+            }
+        }
+
         if (Input.GetKeyDown(KeyCode.D) && reporter)
         {
             reporter.showGameManagerControl = !reporter.showGameManagerControl;

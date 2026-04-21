@@ -227,16 +227,23 @@ public class DraggableItem : MonoBehaviour, IBeginDragHandler, IDragHandler, IEn
 
     public void OnBeginDrag(PointerEventData eventData)
     {
-        /**
-         * @description 포커스 권한이 없는 객체는 드래그를 시작할 수 없도록 강제 종료함.
-         * @param eventData 포인터 이벤트 데이터.
-         */
         if (focusedItem != this)
         {
             return;
         }
 
         isPointerDown = false;
+
+        if (!isPlacedInDrawZone)
+        {
+            GameObject clone = Instantiate(gameObject, originalParent);
+            clone.name = gameObject.name;
+            
+            // 그리드 레이아웃 내에서 원래 아이템의 순서를 그대로 유지하기 위해 인덱스를 복사함
+            clone.transform.SetSiblingIndex(transform.GetSiblingIndex());
+            clone.transform.localScale = Vector3.one;
+            clone.transform.localEulerAngles = Vector3.zero;
+        }
 
         if (rootCanvas)
         {
@@ -251,31 +258,8 @@ public class DraggableItem : MonoBehaviour, IBeginDragHandler, IDragHandler, IEn
         }
     }
 
-    public void OnDrag(PointerEventData eventData)
-    {
-        /**
-         * @description 제스처 중이거나 포커스가 없는 경우 드래그 위치 이동을 차단함.
-         * @param eventData 포인터 이벤트 데이터.
-         */
-        if (focusedItem != this || isGestureActive)
-        {
-            return;
-        }
-
-        Vector3 worldPoint;
-        Camera cam = eventData.pressEventCamera;
-        if (RectTransformUtility.ScreenPointToWorldPointInRectangle(rectTransform, eventData.position, cam, out worldPoint))
-        {
-            rectTransform.position = worldPoint;
-        }
-    }
-
     public void OnEndDrag(PointerEventData eventData)
     {
-        /**
-         * @description 드래그 종료 시 안착을 처리하며 포커스 없는 객체의 이벤트는 무시함.
-         * @param eventData 포인터 이벤트 데이터.
-         */
         if (focusedItem != this)
         {
             return;
@@ -316,14 +300,43 @@ public class DraggableItem : MonoBehaviour, IBeginDragHandler, IDragHandler, IEn
             isPlacedInDrawZone = true;
             transform.SetParent(drawZoneTransform);
             transform.SetAsLastSibling();
+            
+            // 이후 실수로 도화지 밖으로 드래그했을 때 트레이로 돌아가지 않도록 부모 기준을 갱신함
+            originalParent = drawZoneTransform;
         }
         else
         {
-            isPlacedInDrawZone = false;
-            transform.SetParent(originalParent);
-            
-            transform.localScale = Vector3.one;
-            transform.localEulerAngles = Vector3.zero;
+            if (!isPlacedInDrawZone)
+            {
+                // 트레이에서 처음 꺼낸 아이템이 도화지 밖에 떨어지면 파괴함
+                Destroy(gameObject);
+            }
+            else
+            {
+                // 도화지에 이미 안착했던 아이템이 밖으로 나가면 도화지 내 위치로 안전하게 복귀함
+                transform.SetParent(originalParent);
+                transform.localScale = Vector3.one;
+                transform.localEulerAngles = Vector3.zero;
+            }
+        }
+    }
+
+    public void OnDrag(PointerEventData eventData)
+    {
+        /**
+         * @description 제스처 중이거나 포커스가 없는 경우 드래그 위치 이동을 차단함.
+         * @param eventData 포인터 이벤트 데이터.
+         */
+        if (focusedItem != this || isGestureActive)
+        {
+            return;
+        }
+
+        Vector3 worldPoint;
+        Camera cam = eventData.pressEventCamera;
+        if (RectTransformUtility.ScreenPointToWorldPointInRectangle(rectTransform, eventData.position, cam, out worldPoint))
+        {
+            rectTransform.position = worldPoint;
         }
     }
 }
