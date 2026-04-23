@@ -1,10 +1,20 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 using System.IO;
 
 public class Display2Manager : MonoBehaviour
-{
+{   
+    public enum IncomingDirection
+    {
+        Bottom,
+        BottomRight
+    }
+    
     private static Display2Manager instance;
+    
+    [Header("Animation Settings")]
+    [SerializeField] private IncomingDirection incomingDirection;
 
     [SerializeField]
     private Image frameImage;
@@ -16,9 +26,6 @@ public class Display2Manager : MonoBehaviour
 
     private void Awake()
     {
-        /**
-         * @description 싱글톤 인스턴스를 설정하고, 저장 경로 초기화 및 이전 이미지를 로드함.
-         */
         if (instance)
         {
             Destroy(gameObject);
@@ -40,10 +47,6 @@ public class Display2Manager : MonoBehaviour
         LoadImageFromDisk();
     }
 
-    /**
-     * @description 새로운 이미지를 화면에 표시하고 동시에 디스크에 물리 파일로 저장함.
-     * @param newSprite 액자에 표시할 새로운 이미지 스프라이트.
-     */
     public void UpdateDisplayImage(Sprite newSprite)
     {
         if (!frameImage || !newSprite)
@@ -51,9 +54,14 @@ public class Display2Manager : MonoBehaviour
             return;
         }
 
+        GameObject oldFrameObj = Instantiate(frameImage.gameObject, frameImage.transform.parent);
+        oldFrameObj.transform.SetAsFirstSibling();
+
         frameImage.sprite = newSprite;
         FitToCanvas(newSprite.texture);
         SaveImageToDisk(newSprite.texture);
+
+        StartCoroutine(SlideInRoutine(oldFrameObj));
     }
 
     /**
@@ -63,7 +71,7 @@ public class Display2Manager : MonoBehaviour
      */
     private void FitToCanvas(Texture2D texture)
     {
-        if (!frameImage || texture == null) return;
+        if (!frameImage || !texture) return;
 
         RectTransform canvasRect = frameImage.canvas.GetComponent<RectTransform>();
         float canvasW = canvasRect.rect.width;
@@ -133,6 +141,66 @@ public class Display2Manager : MonoBehaviour
         catch (System.Exception e)
         {
             Debug.LogError("Failed to load image: " + e.Message);
+        }
+    }
+    
+    private IEnumerator SlideInRoutine(GameObject oldFrameObj)
+    {
+        float duration = 0.8f;
+        float elapsed = 0f;
+
+        RectTransform newRt = frameImage.rectTransform;
+        Vector2 centerPos = newRt.anchoredPosition; 
+        Vector2 startPos;
+        Vector2 exitPos;
+        
+        switch (incomingDirection)
+        {
+            case IncomingDirection.Bottom:
+                startPos = centerPos + new Vector2(0f, -1500f);
+                exitPos = centerPos + new Vector2(0f, 1500f); // 위로 밀려남
+                break;
+            case IncomingDirection.BottomRight:
+                startPos = centerPos + new Vector2(1500f, -1500f);
+                exitPos = centerPos + new Vector2(-1500f, 1500f); // 좌상단으로 밀려남
+                break;
+            default:
+                startPos = centerPos + new Vector2(0f, -1500f);
+                exitPos = centerPos + new Vector2(0f, 1500f);
+                break;
+        }
+        
+        newRt.anchoredPosition = startPos;
+
+        RectTransform oldRt = null;
+        if (oldFrameObj)
+        {
+            oldRt = oldFrameObj.GetComponent<RectTransform>();
+        }
+
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float t = elapsed / duration;
+            float easeT = 1f - Mathf.Pow(1f - t, 3f);
+
+            // 새 이미지는 화면 밖에서 중앙으로 들어옴
+            newRt.anchoredPosition = Vector2.Lerp(startPos, centerPos, easeT);
+            
+            // 기존 이미지는 중앙에서 화면 밖으로 밀려남
+            if (oldRt)
+            {
+                oldRt.anchoredPosition = Vector2.Lerp(centerPos, exitPos, easeT);
+            }
+            
+            yield return null;
+        }
+
+        newRt.anchoredPosition = centerPos;
+
+        if (oldFrameObj)
+        {
+            Destroy(oldFrameObj);
         }
     }
 }

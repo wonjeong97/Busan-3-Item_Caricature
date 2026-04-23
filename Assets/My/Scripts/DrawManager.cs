@@ -6,6 +6,15 @@ using Wonjeong.Utils;
 
 public class DrawManager : MonoBehaviour
 {
+    public enum OutgoingDirection
+    {
+        Top,
+        TopLeft
+    }
+
+    [Header("Animation Settings")]
+    [SerializeField] private OutgoingDirection outgoingDirection;
+    
     [Header("Page References")]
     [SerializeField] private GameObject page1;
     [SerializeField] private GameObject page2;
@@ -18,6 +27,10 @@ public class DrawManager : MonoBehaviour
     [SerializeField] private Button completeButton;
     [SerializeField] private Button backButton;
     [SerializeField] private Button hangButton;
+    
+    [Header("Audio Settings")]
+    [SerializeField] private AudioClip completeSound;
+    [SerializeField] private AudioClip hangSound;
 
     private Sprite _spriteForPage2;
     private Sprite _spriteForDisplay2;
@@ -27,10 +40,12 @@ public class DrawManager : MonoBehaviour
         if (completeButton)
         {
             completeButton.onClick.AddListener(OnCompleteButtonClicked);
+            completeButton.gameObject.SetActive(false);
+            StartCoroutine(ShowCompleteButtonRoutine());
         }
         else
         {
-            Debug.LogWarning("completeButton is missing.");
+            Debug.LogWarning("completeButton is missing. Fallback to ignoring delay logic.");
         }
 
         if (backButton)
@@ -55,12 +70,31 @@ public class DrawManager : MonoBehaviour
         if (page2) page2.SetActive(false);
     }
 
+    private IEnumerator ShowCompleteButtonRoutine()
+    {
+        yield return new WaitForSeconds(3f);
+
+        if (completeButton)
+        {
+            completeButton.gameObject.SetActive(true);
+        }
+        else
+        {
+            Debug.LogWarning("completeButton is missing during delay routine. Fallback to aborting.");
+        }
+    }
+
     public void OnCompleteButtonClicked()
     {
         if (!page1 || !page2 || !drawZoneRect || !imageResult)
         {
             Debug.LogError("Required references are missing in DrawManager. Fallback to aborting capture.");
             return;
+        }
+
+        if (GameManager.Instance && completeSound)
+        {
+            GameManager.Instance.PlayEffectSound(completeSound);
         }
 
         StartCoroutine(CaptureAndTransition());
@@ -93,16 +127,17 @@ public class DrawManager : MonoBehaviour
             return;
         }
 
-        if (Display2Manager.Instance)
+        if (hangButton)
         {
-            Display2Manager.Instance.UpdateDisplayImage(_spriteForDisplay2);
-        }
-        else
-        {
-            Debug.LogError("Display2Manager Instance not found. Fallback to aborting display update.");
+            hangButton.interactable = false;
         }
 
-        SceneManager.LoadScene(GameConstants.TitleScene);
+        if (GameManager.Instance && hangSound)
+        {
+            GameManager.Instance.PlayEffectSound(hangSound);
+        }
+
+        StartCoroutine(AnimateAndHangRoutine());
     }
 
    private IEnumerator CaptureAndTransition()
@@ -239,5 +274,59 @@ public class DrawManager : MonoBehaviour
 
         page1.SetActive(false);
         page2.SetActive(true);
+    }
+   
+    private IEnumerator AnimateAndHangRoutine()
+    {
+        float duration = 1.5f;
+        float elapsed = 0f;
+
+        RectTransform imgRect = imageResult.rectTransform;
+        Vector2 startPos = imgRect.anchoredPosition;
+        Vector2 targetPos;
+
+        // 선택된 방향에 따른 타겟 오프셋 계산 (예: TopLeft 선택 시 X:-1500, Y:1500 반환)
+        switch (outgoingDirection)
+        {
+            case OutgoingDirection.Top:
+                targetPos = startPos + new Vector2(0f, 1500f);
+                break;
+            case OutgoingDirection.TopLeft:
+                targetPos = startPos + new Vector2(-1500f, 1500f);
+                break;
+            default:
+                targetPos = startPos + new Vector2(0f, 1500f);
+                break;
+        }
+
+        Vector3 startScale = imgRect.localScale;
+        Vector3 targetScale = Vector3.zero;
+
+        Color startColor = imageResult.color;
+        Color targetColor = new Color(startColor.r, startColor.g, startColor.b, 0f);
+
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float t = elapsed / duration;
+            float easeT = 1f - Mathf.Pow(1f - t, 3f); 
+
+            imgRect.anchoredPosition = Vector2.Lerp(startPos, targetPos, easeT);
+            imgRect.localScale = Vector3.Lerp(startScale, targetScale, easeT);
+            imageResult.color = Color.Lerp(startColor, targetColor, easeT);
+
+            yield return null;
+        }
+
+        if (Display2Manager.Instance)
+        {
+            Display2Manager.Instance.UpdateDisplayImage(_spriteForDisplay2);
+        }
+        else
+        {
+            Debug.LogError("Display2Manager Instance not found. Fallback to aborting display update.");
+        }
+
+        SceneManager.LoadScene(GameConstants.TitleScene);
     }
 }

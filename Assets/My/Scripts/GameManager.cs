@@ -13,7 +13,7 @@ public class GameManager : MonoBehaviour
     [Header("UI Audio")]
     [SerializeField] private AudioSource uiAudioSource;
     [SerializeField] private AudioClip defaultClickSound;
-    
+
     [Header("Idle Settings")]
     [SerializeField] private float idleTimer;
     private const float IdleTimeoutDuration = 60f;
@@ -96,5 +96,19 @@ public class GameManager : MonoBehaviour
         }
 
         uiAudioSource.PlayOneShot(defaultClickSound);
+    }
+    
+    public void PlayEffectSound(AudioClip clip)
+    {
+        if (!uiAudioSource)
+        {
+            Debug.LogWarning("GameManager에 uiAudioSource가 할당되지 않았습니다.");
+            return;
+        }
+
+        if (clip)
+        {
+            uiAudioSource.PlayOneShot(clip);
+        }
     }
 }

@@ -239,7 +239,6 @@ public class DraggableItem : MonoBehaviour, IBeginDragHandler, IDragHandler, IEn
             GameObject clone = Instantiate(gameObject, originalParent);
             clone.name = gameObject.name;
             
-            // 그리드 레이아웃 내에서 원래 아이템의 순서를 그대로 유지하기 위해 인덱스를 복사함
             clone.transform.SetSiblingIndex(transform.GetSiblingIndex());
             clone.transform.localScale = Vector3.one;
             clone.transform.localEulerAngles = Vector3.zero;
@@ -301,32 +300,17 @@ public class DraggableItem : MonoBehaviour, IBeginDragHandler, IDragHandler, IEn
             transform.SetParent(drawZoneTransform);
             transform.SetAsLastSibling();
             
-            // 이후 실수로 도화지 밖으로 드래그했을 때 트레이로 돌아가지 않도록 부모 기준을 갱신함
             originalParent = drawZoneTransform;
         }
         else
         {
-            if (!isPlacedInDrawZone)
-            {
-                // 트레이에서 처음 꺼낸 아이템이 도화지 밖에 떨어지면 파괴함
-                Destroy(gameObject);
-            }
-            else
-            {
-                // 도화지에 이미 안착했던 아이템이 밖으로 나가면 도화지 내 위치로 안전하게 복귀함
-                transform.SetParent(originalParent);
-                transform.localScale = Vector3.one;
-                transform.localEulerAngles = Vector3.zero;
-            }
+            // 도화지 영역 밖으로 벗어난 모든 드랍은 삭제(버리기)로 간주하여 객체를 파괴함
+            Destroy(gameObject);
         }
     }
 
     public void OnDrag(PointerEventData eventData)
     {
-        /**
-         * @description 제스처 중이거나 포커스가 없는 경우 드래그 위치 이동을 차단함.
-         * @param eventData 포인터 이벤트 데이터.
-         */
         if (focusedItem != this || isGestureActive)
         {
             return;
