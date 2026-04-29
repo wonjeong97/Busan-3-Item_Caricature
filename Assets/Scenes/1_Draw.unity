@@ -6061,7 +6061,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c8126fbe8056c5940a74d65ec2532ef8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  outgoingDirection: 0
+  outgoingDirection: 1
   page1: {fileID: 1809562895}
   page2: {fileID: 1817361110}
   drawZoneRect: {fileID: 2733084}
